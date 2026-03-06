@@ -5,13 +5,14 @@
     "mod_id": "mr_trek"
   },
   "template_pools": [
+    "trek:village/cherry/houses",
     "trek:village/plains/houses",
     "trek:village/desert/houses",
+    "trek:village/mushroom/houses",
     "trek:village/savanna/houses",
     "trek:village/snowy/houses",
     "trek:village/taiga/houses",
-    "trek:village/mushroom/houses",
-    "trek:village/swamp/houses"
+    "trek:village/mushroom/houses"
   ],
   "elements": [
     {

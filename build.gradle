@@ -173,7 +173,7 @@ dependencies {
 
     implementation fg.deobf("curse.maven:lithostitched-936015:6742615")//村庄插入
 
-    implementation fg.deobf("libs:trek:B0.5.1")
+    implementation fg.deobf("libs:trek:B0.6")
     implementation fg.deobf("curse.maven:towns-and-towers-626761:4923828")
     implementation fg.deobf("curse.maven:cristel-lib-856996:5869180")
 
