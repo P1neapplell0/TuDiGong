@@ -1,6 +1,5 @@
 package com.p1nero.tudigong.compat;
 
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.client.AddXaeroMapWaypointPacket;
 import com.p1nero.tudigong.util.TextUtil;
@@ -8,8 +7,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import xaero.common.XaeroMinimapSession;
 import xaero.common.core.IXaeroMinimapClientPlayNetHandler;
@@ -26,13 +25,13 @@ import java.util.ArrayList;
 @SuppressWarnings("deprecation")
 public class XaeroWaypointHelper {
     public static void sendWaypoint(ServerPlayer player, String key, BlockPos pos) {
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new AddXaeroMapWaypointPacket(key, pos, WaypointColor.getRandom().name()), player);
+        TDGPacketHandler.sendToPlayer(new AddXaeroMapWaypointPacket(key, pos, WaypointColor.getRandom().name()), player);
     }
     public static void sendWaypoint(ServerPlayer player, String key, BlockPos pos, int colorIndex) {
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new AddXaeroMapWaypointPacket(key, pos, WaypointColor.fromIndex(colorIndex).name()), player);
+        TDGPacketHandler.sendToPlayer(new AddXaeroMapWaypointPacket(key, pos, WaypointColor.fromIndex(colorIndex).name()), player);
     }
     public static void sendWaypoint(ServerPlayer player, String key, BlockPos pos, WaypointColor color) {
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new AddXaeroMapWaypointPacket(key, pos, color.name()), player);
+        TDGPacketHandler.sendToPlayer(new AddXaeroMapWaypointPacket(key, pos, color.name()), player);
     }
 
     @OnlyIn(Dist.CLIENT)

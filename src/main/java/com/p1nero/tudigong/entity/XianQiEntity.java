@@ -45,9 +45,9 @@ public class XianQiEntity extends PathfinderMob {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(HIGHLIGHT_TIMER, 0);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(HIGHLIGHT_TIMER, 0);
     }
 
     @Override

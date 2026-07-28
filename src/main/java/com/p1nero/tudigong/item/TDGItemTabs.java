@@ -5,15 +5,16 @@ import com.p1nero.tudigong.block.TDGBlocks;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 public class TDGItemTabs {
 
     public static final DeferredRegister<CreativeModeTab> REGISTRY = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, TuDiGongMod.MOD_ID);
-    public static final RegistryObject<CreativeModeTab> ITEMS = REGISTRY.register("items",
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ITEMS = REGISTRY.register("items",
             () -> CreativeModeTab.builder().title(Component.translatable("entity.tudigong.tudigong")).icon(() -> TDGBlocks.TUDI_TEMPLE.get().asItem().getDefaultInstance()).displayItems((params, output) -> {
                 output.accept(TDGBlocks.TUDI_TEMPLE.get());
                 output.accept(TDGItems.TUDI_COMMAND_SPELL.get());
+                output.accept(TDGItems.GEOMANCY_TALISMAN.get());
             }).build());
 }

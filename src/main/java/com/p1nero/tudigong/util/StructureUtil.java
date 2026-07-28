@@ -18,8 +18,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.text.WordUtils;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,7 +41,8 @@ public class StructureUtil {
 
     public static boolean matches(ResourceKey<Structure> resourceKey, ServerLevel serverLevel, float x, float y, float z) {
         BlockPos blockpos = new BlockPos((int) x, (int) y, (int) z);
-        return resourceKey != null && serverLevel.isLoaded(blockpos) && serverLevel.structureManager().getStructureWithPieceAt(blockpos, resourceKey).isValid();
+        Structure structure = resourceKey == null ? null : serverLevel.registryAccess().registryOrThrow(Registries.STRUCTURE).get(resourceKey);
+        return structure != null && serverLevel.isLoaded(blockpos) && serverLevel.structureManager().getStructureWithPieceAt(blockpos, structure).isValid();
     }
 
     @Nullable

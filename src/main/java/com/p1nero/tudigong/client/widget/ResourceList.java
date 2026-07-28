@@ -10,8 +10,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.StringUtil;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,10 +51,7 @@ public class ResourceList extends ObjectSelectionList<ResourceList.Entry> {
                         Map<String, Set<ResourceLocation>> types,
                         Map<ResourceLocation, ResourceLocation> structureToTypeMap,
                         IntConsumer resultCountListener) {
-        super(minecraft, width, height, y0, y1, itemHeight);
-        this.setRenderBackground(false);
-        this.setRenderTopAndBottom(false);
-        this.setRenderSelection(false);
+        super(minecraft, width, y1 - y0, y0, itemHeight);
         this.names = names;
         this.box = box;
         this.tags = tags;
@@ -67,9 +64,9 @@ public class ResourceList extends ObjectSelectionList<ResourceList.Entry> {
     }
 
     @Override
-    protected void renderBackground(@NotNull GuiGraphics guiGraphics) {
-        guiGraphics.fill(this.x0, this.y0, this.x1, this.y1, 0xC812100F);
-        TudiGongUiTheme.drawBorder(guiGraphics, this.x0, this.y0, this.x1, this.y1, TudiGongUiTheme.GOLD_MUTED);
+    protected void renderListBackground(@NotNull GuiGraphics guiGraphics) {
+        guiGraphics.fill(this.getX(), this.getY(), this.getRight(), this.getBottom(), 0xC812100F);
+        TudiGongUiTheme.drawBorder(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), TudiGongUiTheme.GOLD_MUTED);
     }
 
     @Override
@@ -79,7 +76,7 @@ public class ResourceList extends ObjectSelectionList<ResourceList.Entry> {
 
     @Override
     protected int getScrollbarPosition() {
-        return this.x1 - 6;
+        return this.getRight() - 6;
     }
 
     @Override
@@ -89,13 +86,17 @@ public class ResourceList extends ObjectSelectionList<ResourceList.Entry> {
             return;
         }
         int scrollbarX = this.getScrollbarPosition();
-        int viewportHeight = this.y1 - this.y0;
+        int viewportHeight = this.getHeight();
         int thumbHeight = Mth.clamp((int) ((float) (viewportHeight * viewportHeight) / this.getMaxPosition()),
                 24, viewportHeight - 8);
-        int thumbTop = (int) this.getScrollAmount() * (viewportHeight - thumbHeight) / maxScroll + this.y0;
-        graphics.fill(scrollbarX, this.y0, scrollbarX + 6, this.y1, 0xFF171310);
+        int thumbTop = (int) this.getScrollAmount() * (viewportHeight - thumbHeight) / maxScroll + this.getY();
+        graphics.fill(scrollbarX, this.getY(), scrollbarX + 6, this.getBottom(), 0xFF171310);
         graphics.fill(scrollbarX + 1, thumbTop, scrollbarX + 5, thumbTop + thumbHeight, TudiGongUiTheme.GOLD_MUTED);
         graphics.fill(scrollbarX + 2, thumbTop + 1, scrollbarX + 4, thumbTop + thumbHeight - 1, TudiGongUiTheme.GOLD);
+    }
+
+    @Override
+    protected void renderSelection(GuiGraphics graphics, int top, int width, int height, int outerColor, int innerColor) {
     }
 
     @Override
@@ -239,7 +240,7 @@ public class ResourceList extends ObjectSelectionList<ResourceList.Entry> {
     }
 
     public void page(int direction) {
-        int viewportHeight = Math.max(1, this.y1 - this.y0 - 8);
+        int viewportHeight = Math.max(1, this.getHeight() - 8);
         this.setScrollAmount(this.getScrollAmount() + direction * viewportHeight);
     }
 

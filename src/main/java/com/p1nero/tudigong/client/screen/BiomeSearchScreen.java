@@ -1,13 +1,12 @@
 package com.p1nero.tudigong.client.screen;
 
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
-import com.p1nero.dialog_lib.network.packet.serverbound.HandleNpcEntityPlayerInteractPacket;
 import com.p1nero.tudigong.client.widget.ResourceList;
 import com.p1nero.tudigong.client.widget.TudiGongButton;
 import com.p1nero.tudigong.client.widget.TudiGongEditBox;
 import com.p1nero.tudigong.client.widget.TudiGongUiTheme;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.server.HandleSearchPacket;
+import com.p1nero.tudigong.network.packet.server.HandleNpcInteractionPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
@@ -15,8 +14,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.LinkedHashMap;
@@ -84,7 +83,7 @@ public class BiomeSearchScreen extends Screen {
         this.resourceList = new ResourceList(Minecraft.getInstance(), contentWidth, this.height, listTop, listBottom, 32,
                 BIOME_NAME_MAP, this.searchBox, null, BIOME_MOD_IDS, null, BIOME_DIMENSIONS, null, null,
                 count -> this.resultCount = count);
-        this.resourceList.setLeftPos(contentLeft);
+        this.resourceList.setX(contentLeft);
         this.addRenderableWidget(this.resourceList);
         this.searchBox.setResponder(this.resourceList::refresh);
         this.resourceList.refresh(previousQuery, false);
@@ -119,7 +118,7 @@ public class BiomeSearchScreen extends Screen {
         }
         ResourceLocation selected = this.resourceList.getSelectedResourceIdForCurrentInput();
         String searchToSend = selected == null ? searchString : selected.toString();
-        DialoguePacketRelay.sendToServer(TDGPacketHandler.INSTANCE, new HandleSearchPacket(this.tudigongId, searchToSend, false));
+        TDGPacketHandler.sendToServer(new HandleSearchPacket(this.tudigongId, searchToSend, false));
         this.found = true;
         this.onClose();
     }
@@ -128,7 +127,7 @@ public class BiomeSearchScreen extends Screen {
     public void onClose() {
         super.onClose();
         if (!this.found) {
-            DialoguePacketRelay.sendToServer(new HandleNpcEntityPlayerInteractPacket(this.tudigongId, 0));
+            TDGPacketHandler.sendToServer(new HandleNpcInteractionPacket(this.tudigongId, 0));
         }
     }
 

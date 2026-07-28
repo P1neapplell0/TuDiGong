@@ -1,11 +1,14 @@
 package com.p1nero.tudigong.network.packet.server;
 
-import com.p1nero.dialog_lib.network.packet.BasePacket;
+import com.p1nero.tudigong.network.BasePacket;
 import com.p1nero.tudigong.entity.TudiGongEntity;
 import com.p1nero.tudigong.util.StructureTagManager;
 import com.p1nero.tudigong.util.StructureUtils;
 import net.minecraft.ResourceLocationException;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,17 +19,24 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Optional;
 
 public record HandleSearchPacket(int entityID, String searchString, boolean isStructure) implements BasePacket {
+    public static final CustomPacketPayload.Type<HandleSearchPacket> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath("tudigong", "handle_search"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, HandleSearchPacket> STREAM_CODEC = BasePacket.codec(HandleSearchPacket::decode);
 
     private static final String TAG_PREFIX = "#";
     private static final String SET_PREFIX = "$";
 
-    public void encode(FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public void encode(RegistryFriendlyByteBuf buf) {
         buf.writeInt(this.entityID());
         buf.writeUtf(this.searchString());
         buf.writeBoolean(isStructure);
     }
 
-    public static HandleSearchPacket decode(FriendlyByteBuf buf) {
+    public static HandleSearchPacket decode(RegistryFriendlyByteBuf buf) {
         return new HandleSearchPacket(buf.readInt(), buf.readUtf(), buf.readBoolean());
     }
 
@@ -79,8 +89,7 @@ public record HandleSearchPacket(int entityID, String searchString, boolean isSt
     private Optional<ResourceLocation> handleDirectSearch(ServerPlayer player) {
         try {
             // Try to parse as a direct ResourceLocation first.
-            @SuppressWarnings("removal")
-            ResourceLocation resourceLocation = new ResourceLocation(searchString);
+            ResourceLocation resourceLocation = ResourceLocation.parse(searchString);
             return Optional.of(resourceLocation);
         } catch (ResourceLocationException e) {
             // If that fails, try our fallback search by structure type name.

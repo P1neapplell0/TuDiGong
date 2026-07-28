@@ -10,8 +10,8 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class HistoryScreen extends Screen {
@@ -50,7 +50,7 @@ public class HistoryScreen extends Screen {
         this.addRenderableWidget(this.searchBox);
 
         this.historyList = new HistoryList(this.minecraft, contentWidth, this.height, listTop, listBottom);
-        this.historyList.setLeftPos(contentLeft);
+        this.historyList.setX(contentLeft);
         this.addRenderableWidget(this.historyList);
         this.searchBox.setResponder(this.historyList::filter);
         this.historyList.filter(previousQuery);

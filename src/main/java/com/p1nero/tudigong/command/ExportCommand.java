@@ -52,7 +52,7 @@ public class ExportCommand {
         }
         CommandSourceStack source = context.getSource();
         MinecraftServer server = source.getServer();
-        File outputDir = server.getFile("exported_structures");
+        File outputDir = server.getFile("exported_structures").toFile();
         if (!outputDir.exists() && !outputDir.mkdirs()) {
             source.sendFailure(Component.literal("Failed to create directory: " + outputDir.getAbsolutePath()));
             return 0;
@@ -109,7 +109,7 @@ public class ExportCommand {
     private static int executeOriginal(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         MinecraftServer server = source.getServer();
-        File outputDir = server.getFile("exported_structures");
+        File outputDir = server.getFile("exported_structures").toFile();
         if (!outputDir.exists()) {
             if (!outputDir.mkdirs()) {
                 source.sendFailure(Component.literal("Failed to create directory: " + outputDir.getAbsolutePath()));

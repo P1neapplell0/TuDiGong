@@ -8,8 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.text.WordUtils;
 
 public class TextUtil {
@@ -20,6 +20,10 @@ public class TextUtil {
     };
 
     public static Component getCardinalDirection(Player player, BlockPos target) {
+        return Component.translatable(getCardinalDirectionKey(player, target));
+    }
+
+    public static String getCardinalDirectionKey(Player player, BlockPos target) {
         Vec3 p = player.position();
         Vec3 t = Vec3.atCenterOf(target);
         double angle = Mth.atan2(t.z() - p.z(), t.x() - p.x()) * (180.0 / Math.PI);
@@ -30,15 +34,17 @@ public class TextUtil {
         // Then divide by 45 to get the index.
         int index = (int) Math.floor((angle + 22.5) / 45.0) & 7;
 
-        return Component.translatable(DIRECTIONS[index]);
+        return DIRECTIONS[index];
     }
 
     @OnlyIn(Dist.CLIENT)
     public static String tryToGetName(String key) {
-        if(!ResourceLocation.isValidResourceLocation(key)) {
+        ResourceLocation resourceLocation;
+        try {
+            resourceLocation = ResourceLocation.parse(key);
+        } catch (RuntimeException exception) {
             return key;
         }
-        ResourceLocation resourceLocation = ResourceLocation.parse(key);
         return tryToGetName(resourceLocation);
     }
 

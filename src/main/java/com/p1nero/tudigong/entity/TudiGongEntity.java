@@ -1,24 +1,20 @@
 package com.p1nero.tudigong.entity;
 
-import com.p1nero.dialog_lib.api.entity.custom.IEntityNpc;
-import com.p1nero.dialog_lib.api.entity.goal.LookAtConservingPlayerGoal;
-import com.p1nero.dialog_lib.client.screen.DialogueScreen;
-import com.p1nero.dialog_lib.client.screen.builder.StreamDialogueScreenBuilder;
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
+import com.p1nero.tudigong.dialog.LookAtConversingPlayerGoal;
 import com.p1nero.tudigong.TDGConfig;
 import com.p1nero.tudigong.TuDiGongMod;
 import com.p1nero.tudigong.block.custom.TuDiTempleBlockEntity;
-import com.p1nero.tudigong.client.screen.BiomeSearchScreen;
-import com.p1nero.tudigong.client.screen.StructureSearchScreen;
 import com.p1nero.tudigong.compat.JourneyMapCompat;
 import com.p1nero.tudigong.compat.XaeroMapCompat;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.client.SyncHistoryEntryPacket;
+import com.p1nero.tudigong.network.packet.client.OpenTudiGongDialoguePacket;
+import com.p1nero.tudigong.item.custom.GeomancyTalismanItem;
 import com.p1nero.tudigong.util.BiomeUtil;
 import com.p1nero.tudigong.util.StructureUtils;
 import com.p1nero.tudigong.util.TextUtil;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
+import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -47,16 +43,15 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
+public class TudiGongEntity extends PathfinderMob {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final EntityDataAccessor<Boolean> IS_REMOVED = SynchedEntityData.defineId(TudiGongEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> REMOVE_TIMER = SynchedEntityData.defineId(TudiGongEntity.class, EntityDataSerializers.INT);
@@ -66,6 +61,7 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
     private Vec3 dir = Vec3.ZERO;
     private int startTick = 0;
     public BlockPos homePos;
+    private Player conversingPlayer;
     public TudiGongEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
     }
@@ -73,15 +69,15 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
     @Override
     protected void registerGoals() {
         super.registerGoals();
-        this.goalSelector.addGoal(0, new LookAtConservingPlayerGoal<>(this));
+        this.goalSelector.addGoal(0, new LookAtConversingPlayerGoal(this));
         this.goalSelector.addGoal(1, new LookAtPlayerGoal(this, Player.class, 10.0F));
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(REMOVE_TIMER, 0);
-        this.entityData.define(IS_REMOVED, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(REMOVE_TIMER, 0);
+        builder.define(IS_REMOVED, false);
     }
 
     public void setMarkRemoved() {
@@ -120,6 +116,27 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
 
     public boolean canInteract() {
         return !this.isMarkRemoved() && this.tickCount > maxRemoveTime;
+    }
+
+    @Nullable
+    public Player getConversingPlayer() {
+        return this.conversingPlayer;
+    }
+
+    public void setConversingPlayer(@Nullable Player player) {
+        this.conversingPlayer = player;
+    }
+
+    public void sendDialogTo(ServerPlayer player) {
+        this.sendDialogTo(player, new CompoundTag());
+    }
+
+    public void sendDialogTo(ServerPlayer player, CompoundTag data) {
+        if (this.conversingPlayer == null) {
+            boolean fromHurt = data.getBoolean("from_hurt");
+            TDGPacketHandler.sendToPlayer(new OpenTudiGongDialoguePacket(this.getId(), fromHurt), player);
+            this.conversingPlayer = player;
+        }
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -247,23 +264,6 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
         return InteractionResult.CONSUME;
     }
 
-    @Override
-    @OnlyIn(Dist.CLIENT)
-    public DialogueScreen getDialogueScreen(CompoundTag compoundTag) {
-        StreamDialogueScreenBuilder builder = new StreamDialogueScreenBuilder(this, TuDiGongMod.MOD_ID);
-        if (compoundTag.getBoolean("from_hurt")) {
-            builder.start(0)
-                    .addFinalOption(0);
-        } else {
-            builder.start(1)
-                    .addFinalOption(1, 2, (dialogueScreen -> Minecraft.getInstance().setScreen(new StructureSearchScreen(this.getId()))))
-                    .addFinalOption(2, 2, (dialogueScreen -> Minecraft.getInstance().setScreen(new BiomeSearchScreen(this.getId()))))
-                    .addFinalOption(3, 3);
-        }
-        return builder.build();
-    }
-
-    @Override
     public void handleNpcInteraction(ServerPlayer serverPlayer, int i) {
         if (i == 3) {
             this.setMarkRemoved();
@@ -291,13 +291,13 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
         // Send successful search result back to client for history
         Component typeComponent = Component.translatable(isStructure ? "history.tudigong.type.structure" : "history.tudigong.type.biome");
         SyncHistoryEntryPacket historyPacket = new SyncHistoryEntryPacket(originalSearchTerm, typeComponent, blockpos, serverPlayer.level().dimension());
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, historyPacket, serverPlayer);
+        TDGPacketHandler.sendToPlayer(historyPacket, serverPlayer);
 
         // Display Title
         int distance = (int) Math.sqrt(serverPlayer.blockPosition().distSqr(blockpos));
         Component direction = TextUtil.getCardinalDirection(serverPlayer, blockpos);
-        String structureName = TextUtil.tryToGetName(resourceLocation);
-        Component message = Component.translatable("message.tudigong.location_found", direction, distance, structureName);
+        Component targetName = Component.translatable(Util.makeDescriptionId(isStructure ? "structure" : "biome", resourceLocation));
+        Component message = Component.translatable("message.tudigong.location_found", direction, distance, targetName);
         serverPlayer.sendSystemMessage(ComponentUtils.wrapInSquareBrackets(this.getDisplayName()).append(": ").append(message));
 
         String s = blockpos.getY() == -1145 ? "~" : String.valueOf(blockpos.getY());
@@ -314,10 +314,10 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
             JourneyMapCompat.sendWaypoint(serverPlayer, resourceLocation.toString(), blockpos);
         }
 
-        if (TDGConfig.SPAWN_GUIDER.get()) {
-            net.minecraft.world.level.levelgen.structure.BoundingBox boundingBox = new net.minecraft.world.level.levelgen.structure.BoundingBox(blockpos).inflatedBy(16);
-            XianQiEntity xianQiEntity = new XianQiEntity(level(), blockpos.getCenter(), serverPlayer, boundingBox);
-            level().addFreshEntity(xianQiEntity);
+        ItemStack talisman = GeomancyTalismanItem.create(resourceLocation.toString(), blockpos,
+                serverPlayer.level().dimension(), TextUtil.getCardinalDirectionKey(serverPlayer, blockpos), isStructure);
+        if (!serverPlayer.getInventory().add(talisman)) {
+            serverPlayer.drop(talisman, false);
         }
 
         serverPlayer.displayClientMessage(ComponentUtils.wrapInSquareBrackets(this.getDisplayName()).append(": ").append(Component.translatable("entity.tudigong.tudigong.tudigong.answer3")), false);

@@ -2,7 +2,6 @@ package com.p1nero.tudigong.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.client.SyncStructureTagsPacket;
 import com.p1nero.tudigong.util.StructureTagManager;
@@ -32,6 +31,6 @@ public class ReloadTagsCommand {
     private static void syncTagsWithAllPlayers(MinecraftServer server) {
         PlayerList playerList = server.getPlayerList();
         SyncStructureTagsPacket packet = new SyncStructureTagsPacket(StructureTagManager.getTags());
-        playerList.getPlayers().forEach(player -> DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, packet, player));
+        playerList.getPlayers().forEach(player -> TDGPacketHandler.sendToPlayer(packet, player));
     }
 }

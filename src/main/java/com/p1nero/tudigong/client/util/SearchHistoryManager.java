@@ -7,12 +7,13 @@ import com.p1nero.tudigong.TuDiGongMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.fml.loading.FMLPaths;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -105,7 +106,7 @@ public class SearchHistoryManager {
 
         public HistorySaveEntry(SearchHistoryEntry entry) {
             this.searchTerm = entry.searchTerm();
-            this.type = Component.Serializer.toJson(entry.type());
+            this.type = Component.Serializer.toJson(entry.type(), RegistryAccess.EMPTY);
             if (entry.position() != null) {
                 this.position = new int[]{entry.position().getX(), entry.position().getY(), entry.position().getZ()};
             }
@@ -116,7 +117,7 @@ public class SearchHistoryManager {
         }
 
         public SearchHistoryEntry toHistoryEntry() {
-            Component typeComp = Component.Serializer.fromJson(this.type);
+            Component typeComp = Component.Serializer.fromJson(this.type, RegistryAccess.EMPTY);
             BlockPos pos = this.position != null ? new BlockPos(this.position[0], this.position[1], this.position[2]) : null;
             ResourceKey<Level> dimKey = this.dimension != null ? ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(this.dimension)) : null;
             return new SearchHistoryEntry(this.searchTerm, typeComp, pos, dimKey, this.timestamp);

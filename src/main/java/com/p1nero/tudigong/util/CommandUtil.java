@@ -47,7 +47,7 @@ public class CommandUtil {
                     MinecraftServer server = this.getLevel().getServer();
                     try {
                         this.setLastOutput(null);
-                        CommandSourceStack commandSourceStack = this.createCommandSourceStack().withCallback((context, success, i) -> {
+                        CommandSourceStack commandSourceStack = this.createCommandSourceStack().withCallback((success, i) -> {
                             if (success) {
                                 this.setSuccessCount(this.getSuccessCount() + 1);
                             }

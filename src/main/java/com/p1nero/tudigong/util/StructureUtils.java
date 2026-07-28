@@ -24,10 +24,10 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.ModContainer;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import org.apache.commons.lang3.text.WordUtils;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,14 +56,14 @@ public class StructureUtils {
         Registry<StructureSet> registry = getStructureSetRegistry(level);
         for (StructureSet set : registry) {
             for (StructureSet.StructureSelectionEntry entry : set.structures()) {
-                if (entry.structure().get().equals(structure)) {
+                if (entry.structure().value().equals(structure)) {
                     return registry.getKey(set);
                 }
             }
         }
         ResourceLocation structureKey = getKeyForStructure(level, structure);
         if (structureKey != null) {
-            return new ResourceLocation(structureKey.getNamespace(), "mod_provided");
+            return ResourceLocation.fromNamespaceAndPath(structureKey.getNamespace(), "mod_provided");
         }
         return ResourceLocation.fromNamespaceAndPath("tudigong", "none");
     }
@@ -103,7 +103,7 @@ public class StructureUtils {
 
     public static boolean structureIsHidden(ServerLevel level, Structure structure) {
         final Registry<Structure> structureRegistry = getStructureRegistry(level);
-        return structureRegistry.wrapAsHolder(structure).getTagKeys().anyMatch(tag -> tag.location().getPath().equals("c:hidden_from_locator_selection"));
+        return structureRegistry.wrapAsHolder(structure).tags().anyMatch(tag -> tag.location().getPath().equals("c:hidden_from_locator_selection"));
     }
 
     public static List<ResourceLocation> getGeneratingDimensionKeys(ServerLevel serverLevel, Structure structure) {
@@ -283,7 +283,7 @@ public class StructureUtils {
             return Optional.empty();
         }
 
-        List<StructureSet.StructureSelectionEntry> structures = structureSetHolder.get().get().structures();
+        List<StructureSet.StructureSelectionEntry> structures = structureSetHolder.get().value().structures();
         if (structures.isEmpty()) {
             return Optional.empty();
         }

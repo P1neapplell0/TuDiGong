@@ -15,8 +15,8 @@ import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.Item.TooltipContext;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
@@ -49,8 +49,8 @@ public class TuDiCommandSpellItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack itemStack, @Nullable Level level, List<Component> list, TooltipFlag p_41424_) {
-        super.appendHoverText(itemStack, level, list, p_41424_);
+    public void appendHoverText(ItemStack itemStack, TooltipContext context, List<Component> list, TooltipFlag p_41424_) {
+        super.appendHoverText(itemStack, context, list, p_41424_);
         list.add(Component.translatable("item.tudigong.tudi_command_spell.usage").withStyle(ChatFormatting.GRAY));
     }
 }

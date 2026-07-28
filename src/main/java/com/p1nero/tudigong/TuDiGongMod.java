@@ -1,7 +1,6 @@
 package com.p1nero.tudigong;
 
 import com.mojang.logging.LogUtils;
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.block.TDGBlockEntities;
 import com.p1nero.tudigong.block.TDGBlocks;
 import com.p1nero.tudigong.command.ExportStructuresCommand;
@@ -14,6 +13,7 @@ import com.p1nero.tudigong.network.packet.client.*;
 import com.p1nero.tudigong.util.StructureTagManager;
 import com.p1nero.tudigong.util.StructureUtils;
 import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,9 +26,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
+import java.util.Optional;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -41,18 +44,18 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.AddPackFindersEvent;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.ServerChatEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.ServerChatEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -64,24 +67,23 @@ public class TuDiGongMod {
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public TuDiGongMod(FMLJavaModLoadingContext context) {
-        IEventBus modEventBus = context.getModEventBus();
+    public TuDiGongMod(IEventBus modEventBus, ModContainer modContainer) {
         TDGEntities.REGISTRY.register(modEventBus);
         TDGBlocks.REGISTRY.register(modEventBus);
         TDGBlockEntities.REGISTRY.register(modEventBus);
         TDGItems.REGISTRY.register(modEventBus);
         TDGItemTabs.REGISTRY.register(modEventBus);
         modEventBus.addListener(this::commonSetup);
-        MinecraftForge.EVENT_BUS.addListener(this::onPlayerJoinLevel);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerChat);
-        MinecraftForge.EVENT_BUS.addListener(this::onBlockChange);
-        MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        modEventBus.addListener(TDGPacketHandler::register);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerJoinLevel);
+        NeoForge.EVENT_BUS.addListener(this::onServerChat);
+        NeoForge.EVENT_BUS.addListener(this::onBlockChange);
+        NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
         modEventBus.addListener(this::onDatapackLoad);
-        context.registerConfig(ModConfig.Type.COMMON, TDGConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.COMMON, TDGConfig.SPEC);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-        TDGPacketHandler.register();
         event.enqueueWork(StructureTagManager::load);
     }
 
@@ -111,7 +113,7 @@ public class TuDiGongMod {
         if(event.getEntity() instanceof ServerPlayer serverPlayer) {
             syncRegistry(serverPlayer, Registries.STRUCTURE);
             syncRegistry(serverPlayer, Registries.BIOME);
-            DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new SyncStructureTagsPacket(StructureTagManager.getTags()), serverPlayer);
+            TDGPacketHandler.sendToPlayer(new SyncStructureTagsPacket(StructureTagManager.getTags()), serverPlayer);
             syncStructureSets(serverPlayer);
             syncStructureDimensions(serverPlayer);
             syncBiomeDimensions(serverPlayer);
@@ -136,7 +138,7 @@ public class TuDiGongMod {
                 }
             });
         });
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new SyncBiomeDimensionsPacket(biomeDimensions), serverPlayer);
+        TDGPacketHandler.sendToPlayer(new SyncBiomeDimensionsPacket(biomeDimensions), serverPlayer);
     }
 
     public static void syncRegistry(ServerPlayer serverPlayer, ResourceKey<? extends Registry<?>> registry) {
@@ -147,7 +149,7 @@ public class TuDiGongMod {
             }));
         });
         resourceLocations.sort(Comparator.comparing(ResourceLocation::toString));
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new SyncResourceKeysPacket(resourceLocations, registry == Registries.STRUCTURE), serverPlayer);
+        TDGPacketHandler.sendToPlayer(new SyncResourceKeysPacket(resourceLocations, registry == Registries.STRUCTURE), serverPlayer);
     }
 
     public static void syncStructureSets(ServerPlayer serverPlayer) {
@@ -163,7 +165,7 @@ public class TuDiGongMod {
                 structureSets.put(setLocation.toString(), structures);
             }
         });
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new SyncStructureSetsPacket(structureSets), serverPlayer);
+        TDGPacketHandler.sendToPlayer(new SyncStructureSetsPacket(structureSets), serverPlayer);
     }
 
     public static void syncStructureDimensions(ServerPlayer serverPlayer) {
@@ -178,11 +180,11 @@ public class TuDiGongMod {
                 }
             }
         });
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new SyncStructureDimensionsPacket(structureDimensions), serverPlayer);
+        TDGPacketHandler.sendToPlayer(new SyncStructureDimensionsPacket(structureDimensions), serverPlayer);
     }
 
     public static void syncStructureTypes(ServerPlayer serverPlayer) {
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new SyncStructureTypesPacket(StructureUtils.getTypeKeysToStructureKeys(serverPlayer.serverLevel()).asMap(), StructureUtils.getStructureKeysToTypeKeys(serverPlayer.serverLevel())), serverPlayer);
+        TDGPacketHandler.sendToPlayer(new SyncStructureTypesPacket(StructureUtils.getTypeKeysToStructureKeys(serverPlayer.serverLevel()).asMap(), StructureUtils.getStructureKeysToTypeKeys(serverPlayer.serverLevel())), serverPlayer);
     }
 
     private void onBlockChange(BlockEvent.EntityPlaceEvent event) {
@@ -218,12 +220,23 @@ public class TuDiGongMod {
 
     private void addNewDatapack(AddPackFindersEvent event, String name) {
         var resourcePath = ModList.get().getModFileById(MOD_ID).getFile().findResource("packs/" + name);
-        var pack = Pack.readMetaAndCreate(name, Component.literal(name), true,
-                (path) -> new PathPackResources(path, resourcePath, false), PackType.SERVER_DATA, Pack.Position.TOP, PackSource.WORLD);
+        PackLocationInfo location = new PackLocationInfo(name, Component.literal(name), PackSource.WORLD, Optional.empty());
+        var pack = Pack.readMetaAndCreate(location, new Pack.ResourcesSupplier() {
+                    @Override
+                    public net.minecraft.server.packs.PackResources openPrimary(PackLocationInfo info) {
+                        return new PathPackResources(info, resourcePath);
+                    }
+
+                    @Override
+                    public net.minecraft.server.packs.PackResources openFull(PackLocationInfo info, Pack.Metadata metadata) {
+                        return new PathPackResources(info, resourcePath);
+                    }
+                }, PackType.SERVER_DATA,
+                new PackSelectionConfig(true, Pack.Position.TOP, false));
         event.addRepositorySource((packConsumer) -> packConsumer.accept(pack));
     }
 
-    public static void finishAdvancement(Advancement advancement, ServerPlayer serverPlayer) {
+    public static void finishAdvancement(AdvancementHolder advancement, ServerPlayer serverPlayer) {
         AdvancementProgress progress = serverPlayer.getAdvancements().getOrStartProgress(advancement);
         if (!progress.isDone()) {
             for (String criteria : progress.getRemainingCriteria()) {
@@ -233,7 +246,7 @@ public class TuDiGongMod {
     }
 
     public static void finishAdvancement(String resourceLocation, ServerPlayer serverPlayer) {
-        Advancement advancement = serverPlayer.server.getAdvancements().getAdvancement(ResourceLocation.parse(resourceLocation));
+        AdvancementHolder advancement = serverPlayer.server.getAdvancements().get(ResourceLocation.parse(resourceLocation));
         if (advancement == null) {
             LOGGER.error("advancement:\"{}\" is null!", resourceLocation);
             return;

@@ -1,65 +1,48 @@
 package com.p1nero.tudigong.compat;
 
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.TuDiGongMod;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.client.AddJourneyMapWaypointPacket;
 import com.p1nero.tudigong.util.TextUtil;
-import journeymap.client.api.IClientAPI;
-import journeymap.client.api.IClientPlugin;
-import journeymap.client.api.display.Waypoint;
-import journeymap.client.api.event.ClientEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-import java.awt.*;
+import java.awt.Color;
+import java.lang.reflect.Method;
 import java.util.Locale;
 
-@ParametersAreNonnullByDefault
-@journeymap.client.api.ClientPlugin
-public class JourneyMapWaypointHelper implements IClientPlugin {
-    private static IClientAPI jmAPI;
-
-    @Override
-    public void initialize(IClientAPI iClientAPI) {
-        jmAPI = iClientAPI;
-    }
-
-    @Override
-    public String getModId() {
-        return TuDiGongMod.MOD_ID;
-    }
-
-    @Override
-    public void onEvent(ClientEvent clientEvent) {
-
+public final class JourneyMapWaypointHelper {
+    private JourneyMapWaypointHelper() {
     }
 
     public static void sendWaypoint(ServerPlayer player, String key, BlockPos pos) {
         RandomSource random = player.getRandom();
         Color color = new Color(random.nextInt(256), random.nextInt(256), random.nextInt(256));
-        int rgb = color.getRGB();
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new AddJourneyMapWaypointPacket(key, pos, rgb), player);
+        TDGPacketHandler.sendToPlayer(new AddJourneyMapWaypointPacket(key, pos, color.getRGB()), player);
     }
 
     public static void sendWaypoint(ServerPlayer player, String key, BlockPos pos, int color) {
-        DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new AddJourneyMapWaypointPacket(key, pos, color), player);
+        TDGPacketHandler.sendToPlayer(new AddJourneyMapWaypointPacket(key, pos, color), player);
     }
 
     public static void createNewWaypoint(String name, int color, BlockPos pos, ResourceKey<Level> dimension) {
-        Waypoint bedWaypoint;
         try {
-            bedWaypoint = new Waypoint(TuDiGongMod.MOD_ID, name.toLowerCase(Locale.ROOT) + "_" + dimension, TextUtil.tryToGetName(name), dimension, pos)
-                    .setColor(color);
+            Class<?> factoryClass = Class.forName("journeymap.api.client.waypoint.ClientWaypointFactoryImpl");
+            Method create = factoryClass.getMethod("createWaypoint", String.class, BlockPos.class, String.class,
+                    String.class, boolean.class, boolean.class, int.class, boolean.class);
+            Object waypoint = create.invoke(null, TuDiGongMod.MOD_ID, pos, TextUtil.tryToGetName(name),
+                    dimension.location().toString(), true, true, color, true);
 
-            jmAPI.show(bedWaypoint);
-
-        } catch (Throwable t) {
-            TuDiGongMod.LOGGER.error(t.getMessage(), t);
+            Class<?> apiClass = Class.forName("journeymap.api.client.impl.ClientAPI");
+            Object api = apiClass.getField("INSTANCE").get(null);
+            Class<?> waypointType = Class.forName("journeymap.api.v2.common.waypoint.Waypoint");
+            apiClass.getMethod("addWaypoint", String.class, waypointType)
+                    .invoke(api, name.toLowerCase(Locale.ROOT), waypoint);
+        } catch (ReflectiveOperationException exception) {
+            TuDiGongMod.LOGGER.error("Unable to add JourneyMap waypoint", exception);
         }
     }
 }

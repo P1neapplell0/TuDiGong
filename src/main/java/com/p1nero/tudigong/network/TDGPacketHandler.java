@@ -1,58 +1,75 @@
 package com.p1nero.tudigong.network;
 
-import com.p1nero.dialog_lib.network.packet.BasePacket;
 import com.p1nero.tudigong.TuDiGongMod;
-import com.p1nero.tudigong.client.screen.StructureSearchScreen;
-import com.p1nero.tudigong.network.packet.client.*;
+import com.p1nero.tudigong.network.packet.client.AddJourneyMapWaypointPacket;
+import com.p1nero.tudigong.network.packet.client.AddXaeroMapWaypointPacket;
+import com.p1nero.tudigong.network.packet.client.OpenTudiGongDialoguePacket;
+import com.p1nero.tudigong.network.packet.client.SyncBiomeDimensionsPacket;
+import com.p1nero.tudigong.network.packet.client.SyncHistoryEntryPacket;
+import com.p1nero.tudigong.network.packet.client.SyncResourceKeysPacket;
+import com.p1nero.tudigong.network.packet.client.SyncStructureDimensionsPacket;
+import com.p1nero.tudigong.network.packet.client.SyncStructureSetsPacket;
+import com.p1nero.tudigong.network.packet.client.SyncStructureTagsPacket;
+import com.p1nero.tudigong.network.packet.client.SyncStructureTypesPacket;
+import com.p1nero.tudigong.network.packet.server.HandleNpcInteractionPacket;
 import com.p1nero.tudigong.network.packet.server.HandleSearchPacket;
 import com.p1nero.tudigong.network.packet.server.TeleportToServerPacket;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
-public class TDGPacketHandler {
-    private static final String PROTOCOL_VERSION = "1";
-    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
-            ResourceLocation.fromNamespaceAndPath(TuDiGongMod.MOD_ID, "main"),
-            () -> PROTOCOL_VERSION, PROTOCOL_VERSION::equals, PROTOCOL_VERSION::equals
-    );
-
-    private static int index;
-
-    public static synchronized void register() {
-        register(AddXaeroMapWaypointPacket.class, AddXaeroMapWaypointPacket::decode);
-        register(AddJourneyMapWaypointPacket.class, AddJourneyMapWaypointPacket::decode);
-        register(SyncResourceKeysPacket.class, SyncResourceKeysPacket::decode);
-        register(SyncStructureTagsPacket.class, SyncStructureTagsPacket::decode);
-        register(SyncStructureSetsPacket.class, SyncStructureSetsPacket::decode);
-        register(SyncStructureDimensionsPacket.class, SyncStructureDimensionsPacket::decode);
-        register(SyncBiomeDimensionsPacket.class, SyncBiomeDimensionsPacket::decode);
-        register(SyncHistoryEntryPacket.class, SyncHistoryEntryPacket::decode);
-
-        // Special handling for SyncStructureTypesPacket to decouple it from a specific screen
-        INSTANCE.messageBuilder(SyncStructureTypesPacket.class, index++)
-                .encoder(SyncStructureTypesPacket::encode)
-                .decoder(SyncStructureTypesPacket::decode)
-                .consumerMainThread((packet, ctx) -> packet.handle(ctx, (types, structureToTypeMap) -> {
-                    StructureSearchScreen.STRUCTURE_TYPES.clear();
-                    StructureSearchScreen.STRUCTURE_TYPES.putAll(types);
-                    StructureSearchScreen.STRUCTURE_TO_TYPE_MAP.clear();
-                    StructureSearchScreen.STRUCTURE_TO_TYPE_MAP.putAll(structureToTypeMap);
-                    StructureSearchScreen.markDataChanged();
-                }))
-                .add();
-
-        register(HandleSearchPacket.class, HandleSearchPacket::decode);
-        register(TeleportToServerPacket.class, TeleportToServerPacket::decode);
+public final class TDGPacketHandler {
+    private TDGPacketHandler() {
     }
 
-    private static <MSG extends BasePacket> void register(final Class<MSG> packet, Function<FriendlyByteBuf, MSG> decoder) {
-        INSTANCE.messageBuilder(packet, index++).encoder(BasePacket::encode).decoder(decoder).consumerMainThread(BasePacket::handle).add();
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(TuDiGongMod.MOD_ID).versioned("2");
+
+        registerClient(registrar, AddXaeroMapWaypointPacket.TYPE, AddXaeroMapWaypointPacket.STREAM_CODEC);
+        registerClient(registrar, AddJourneyMapWaypointPacket.TYPE, AddJourneyMapWaypointPacket.STREAM_CODEC);
+        registerClient(registrar, SyncResourceKeysPacket.TYPE, SyncResourceKeysPacket.STREAM_CODEC);
+        registerClient(registrar, SyncStructureTagsPacket.TYPE, SyncStructureTagsPacket.STREAM_CODEC);
+        registerClient(registrar, SyncStructureSetsPacket.TYPE, SyncStructureSetsPacket.STREAM_CODEC);
+        registerClient(registrar, SyncStructureDimensionsPacket.TYPE, SyncStructureDimensionsPacket.STREAM_CODEC);
+        registerClient(registrar, SyncBiomeDimensionsPacket.TYPE, SyncBiomeDimensionsPacket.STREAM_CODEC);
+        registerClient(registrar, SyncHistoryEntryPacket.TYPE, SyncHistoryEntryPacket.STREAM_CODEC);
+        registerClient(registrar, SyncStructureTypesPacket.TYPE, SyncStructureTypesPacket.STREAM_CODEC);
+        registerClient(registrar, OpenTudiGongDialoguePacket.TYPE, OpenTudiGongDialoguePacket.STREAM_CODEC);
+
+        registerServer(registrar, HandleSearchPacket.TYPE, HandleSearchPacket.STREAM_CODEC);
+        registerServer(registrar, TeleportToServerPacket.TYPE, TeleportToServerPacket.STREAM_CODEC);
+        registerServer(registrar, HandleNpcInteractionPacket.TYPE, HandleNpcInteractionPacket.STREAM_CODEC);
+    }
+
+    private static <T extends BasePacket> void registerClient(PayloadRegistrar registrar,
+                                                               CustomPacketPayload.Type<T> type,
+                                                               StreamCodec<? super net.minecraft.network.RegistryFriendlyByteBuf, T> codec) {
+        registrar.playToClient(type, codec, TDGPacketHandler::handle);
+    }
+
+    private static <T extends BasePacket> void registerServer(PayloadRegistrar registrar,
+                                                               CustomPacketPayload.Type<T> type,
+                                                               StreamCodec<? super net.minecraft.network.RegistryFriendlyByteBuf, T> codec) {
+        registrar.playToServer(type, codec, TDGPacketHandler::handle);
+    }
+
+    private static <T extends BasePacket> void handle(T packet, IPayloadContext context) {
+        context.enqueueWork(() -> packet.execute(context.player()));
+    }
+
+    public static void sendToPlayer(BasePacket packet, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void sendToServer(BasePacket packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+
+    public static void sendToAll(BasePacket packet) {
+        PacketDistributor.sendToAllPlayers(packet);
     }
 }

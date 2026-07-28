@@ -1,6 +1,5 @@
 package com.p1nero.tudigong.client.widget;
 
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.client.util.SearchHistoryManager;
 import com.p1nero.tudigong.client.util.SearchHistoryManager.SearchHistoryEntry;
 import com.p1nero.tudigong.compat.JECharactersIntegration;
@@ -29,10 +28,7 @@ public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
     private int resultCount;
 
     public HistoryList(Minecraft minecraft, int width, int height, int y0, int y1) {
-        super(minecraft, width, height, y0, y1, 48);
-        this.setRenderBackground(false);
-        this.setRenderTopAndBottom(false);
-        this.setRenderSelection(false);
+        super(minecraft, width, y1 - y0, y0, 48);
     }
 
     public void filter(String keyword) {
@@ -73,9 +69,9 @@ public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
     }
 
     @Override
-    protected void renderBackground(@NotNull GuiGraphics graphics) {
-        graphics.fill(this.x0, this.y0, this.x1, this.y1, 0xC812100F);
-        TudiGongUiTheme.drawBorder(graphics, this.x0, this.y0, this.x1, this.y1, TudiGongUiTheme.GOLD_MUTED);
+    protected void renderListBackground(@NotNull GuiGraphics graphics) {
+        graphics.fill(this.getX(), this.getY(), this.getRight(), this.getBottom(), 0xC812100F);
+        TudiGongUiTheme.drawBorder(graphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), TudiGongUiTheme.GOLD_MUTED);
     }
 
     @Override
@@ -85,7 +81,7 @@ public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
 
     @Override
     protected int getScrollbarPosition() {
-        return this.x1 - 6;
+        return this.getRight() - 6;
     }
 
     @Override
@@ -95,13 +91,17 @@ public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
             return;
         }
         int scrollbarX = this.getScrollbarPosition();
-        int viewportHeight = this.y1 - this.y0;
+        int viewportHeight = this.getHeight();
         int thumbHeight = Mth.clamp((int) ((float) (viewportHeight * viewportHeight) / this.getMaxPosition()),
                 24, viewportHeight - 8);
-        int thumbTop = (int) this.getScrollAmount() * (viewportHeight - thumbHeight) / maxScroll + this.y0;
-        graphics.fill(scrollbarX, this.y0, scrollbarX + 6, this.y1, 0xFF171310);
+        int thumbTop = (int) this.getScrollAmount() * (viewportHeight - thumbHeight) / maxScroll + this.getY();
+        graphics.fill(scrollbarX, this.getY(), scrollbarX + 6, this.getBottom(), 0xFF171310);
         graphics.fill(scrollbarX + 1, thumbTop, scrollbarX + 5, thumbTop + thumbHeight, TudiGongUiTheme.GOLD_MUTED);
         graphics.fill(scrollbarX + 2, thumbTop + 1, scrollbarX + 4, thumbTop + thumbHeight - 1, TudiGongUiTheme.GOLD);
+    }
+
+    @Override
+    protected void renderSelection(GuiGraphics graphics, int top, int width, int height, int outerColor, int innerColor) {
     }
 
     public static class Entry extends ObjectSelectionList.Entry<HistoryList.Entry> {
@@ -123,8 +123,7 @@ public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
             this.teleportButton = new TudiGongButton(0, 0, 42, 20,
                     Component.translatable("gui.tudigong.history.teleport"), button -> {
                 if (historyEntry.position() != null && historyEntry.dimension() != null) {
-                    DialoguePacketRelay.sendToServer(TDGPacketHandler.INSTANCE,
-                            new TeleportToServerPacket(historyEntry.position(), historyEntry.dimension()));
+                    TDGPacketHandler.sendToServer(new TeleportToServerPacket(historyEntry.position(), historyEntry.dimension()));
                 }
             });
             this.teleportButton.visible = historyEntry.position() != null && historyEntry.dimension() != null;
