@@ -272,7 +272,8 @@ public class ResourceList extends ObjectSelectionList<ResourceList.Entry> {
             if (ResourceList.this.structureToTypeMap != null) {
                 ResourceLocation typeKey = ResourceList.this.structureToTypeMap.get(this.resourceId);
                 if (typeKey != null && !typeKey.getPath().equals("none")) {
-                    drawClipped(graphics, Component.translatable("gui.tudigong.search.type", typeKey), left + 6, y, textWidth, 0xFFB7A278);
+                    drawClipped(graphics, Component.translatable("gui.tudigong.search.type", Component.literal(typeKey.toString())),
+                            left + 6, y, textWidth, 0xFFB7A278);
                     y += 11;
                 }
             }
