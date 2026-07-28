@@ -15,5 +15,6 @@ public class TDGItemTabs {
             () -> CreativeModeTab.builder().title(Component.translatable("entity.tudigong.tudigong")).icon(() -> TDGBlocks.TUDI_TEMPLE.get().asItem().getDefaultInstance()).displayItems((params, output) -> {
                 output.accept(TDGBlocks.TUDI_TEMPLE.get());
                 output.accept(TDGItems.TUDI_COMMAND_SPELL.get());
+                output.accept(TDGItems.GEOMANCY_TALISMAN.get());
             }).build());
 }

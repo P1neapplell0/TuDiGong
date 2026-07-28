@@ -17,7 +17,9 @@ import com.p1nero.tudigong.network.packet.client.SyncHistoryEntryPacket;
 import com.p1nero.tudigong.util.BiomeUtil;
 import com.p1nero.tudigong.util.StructureUtils;
 import com.p1nero.tudigong.util.TextUtil;
+import com.p1nero.tudigong.item.custom.GeomancyTalismanItem;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleOptions;
@@ -47,6 +49,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
@@ -296,8 +299,8 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
         // Display Title
         int distance = (int) Math.sqrt(serverPlayer.blockPosition().distSqr(blockpos));
         Component direction = TextUtil.getCardinalDirection(serverPlayer, blockpos);
-        String structureName = TextUtil.tryToGetName(resourceLocation);
-        Component message = Component.translatable("message.tudigong.location_found", direction, distance, structureName);
+        Component targetName = Component.translatable(Util.makeDescriptionId(isStructure ? "structure" : "biome", resourceLocation));
+        Component message = Component.translatable("message.tudigong.location_found", direction, distance, targetName);
         serverPlayer.sendSystemMessage(ComponentUtils.wrapInSquareBrackets(this.getDisplayName()).append(": ").append(message));
 
         String s = blockpos.getY() == -1145 ? "~" : String.valueOf(blockpos.getY());
@@ -314,10 +317,10 @@ public class TudiGongEntity extends PathfinderMob implements IEntityNpc {
             JourneyMapCompat.sendWaypoint(serverPlayer, resourceLocation.toString(), blockpos);
         }
 
-        if (TDGConfig.SPAWN_GUIDER.get()) {
-            net.minecraft.world.level.levelgen.structure.BoundingBox boundingBox = new net.minecraft.world.level.levelgen.structure.BoundingBox(blockpos).inflatedBy(16);
-            XianQiEntity xianQiEntity = new XianQiEntity(level(), blockpos.getCenter(), serverPlayer, boundingBox);
-            level().addFreshEntity(xianQiEntity);
+        ItemStack talisman = GeomancyTalismanItem.create(resourceLocation.toString(), blockpos,
+                serverPlayer.level().dimension(), TextUtil.getCardinalDirectionKey(serverPlayer, blockpos), isStructure);
+        if (!serverPlayer.getInventory().add(talisman)) {
+            serverPlayer.drop(talisman, false);
         }
 
         serverPlayer.displayClientMessage(ComponentUtils.wrapInSquareBrackets(this.getDisplayName()).append(": ").append(Component.translatable("entity.tudigong.tudigong.tudigong.answer3")), false);
