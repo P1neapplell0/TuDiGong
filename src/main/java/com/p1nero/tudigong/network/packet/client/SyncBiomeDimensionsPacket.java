@@ -24,5 +24,6 @@ public record SyncBiomeDimensionsPacket(Map<ResourceLocation, List<ResourceLocat
     public void execute(@Nullable Player playerEntity) {
         BiomeSearchScreen.BIOME_DIMENSIONS.clear();
         BiomeSearchScreen.BIOME_DIMENSIONS.putAll(dimensions);
+        BiomeSearchScreen.markDataChanged();
     }
 }

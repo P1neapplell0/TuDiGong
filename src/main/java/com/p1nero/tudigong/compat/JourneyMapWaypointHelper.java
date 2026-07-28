@@ -4,7 +4,6 @@ import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.TuDiGongMod;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.client.AddJourneyMapWaypointPacket;
-import com.p1nero.tudigong.network.packet.client.AddXaeroMapWaypointPacket;
 import com.p1nero.tudigong.util.TextUtil;
 import journeymap.client.api.IClientAPI;
 import journeymap.client.api.IClientPlugin;
@@ -15,8 +14,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.NotNull;
-import xaero.hud.minimap.waypoint.WaypointColor;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.awt.*;
@@ -26,8 +23,9 @@ import java.util.Locale;
 @journeymap.client.api.ClientPlugin
 public class JourneyMapWaypointHelper implements IClientPlugin {
     private static IClientAPI jmAPI;
+
     @Override
-    public void initialize(@NotNull IClientAPI iClientAPI) {
+    public void initialize(IClientAPI iClientAPI) {
         jmAPI = iClientAPI;
     }
 
@@ -37,7 +35,7 @@ public class JourneyMapWaypointHelper implements IClientPlugin {
     }
 
     @Override
-    public void onEvent(@NotNull ClientEvent clientEvent) {
+    public void onEvent(ClientEvent clientEvent) {
 
     }
 
@@ -47,6 +45,7 @@ public class JourneyMapWaypointHelper implements IClientPlugin {
         int rgb = color.getRGB();
         DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new AddJourneyMapWaypointPacket(key, pos, rgb), player);
     }
+
     public static void sendWaypoint(ServerPlayer player, String key, BlockPos pos, int color) {
         DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new AddJourneyMapWaypointPacket(key, pos, color), player);
     }

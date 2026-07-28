@@ -146,15 +146,16 @@ public class TuDiGongMod {
                 resourceLocations.add(resourceKey.location());
             }));
         });
+        resourceLocations.sort(Comparator.comparing(ResourceLocation::toString));
         DialoguePacketRelay.sendToPlayer(TDGPacketHandler.INSTANCE, new SyncResourceKeysPacket(resourceLocations, registry == Registries.STRUCTURE), serverPlayer);
     }
 
     public static void syncStructureSets(ServerPlayer serverPlayer) {
-        Map<String, Set<ResourceLocation>> structureSets = new HashMap<>();
+        Map<String, Set<ResourceLocation>> structureSets = new TreeMap<>();
         Registry<StructureSet> registry = serverPlayer.serverLevel().registryAccess().registryOrThrow(Registries.STRUCTURE_SET);
         registry.entrySet().forEach(entry -> {
             ResourceLocation setLocation = entry.getKey().location();
-            Set<ResourceLocation> structures = new HashSet<>();
+            Set<ResourceLocation> structures = new TreeSet<>(Comparator.comparing(ResourceLocation::toString));
             entry.getValue().structures().forEach(selectionEntry -> {
                 selectionEntry.structure().unwrapKey().ifPresent(key -> structures.add(key.location()));
             });

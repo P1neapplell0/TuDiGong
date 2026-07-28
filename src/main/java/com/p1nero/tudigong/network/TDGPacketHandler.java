@@ -44,6 +44,7 @@ public class TDGPacketHandler {
                     StructureSearchScreen.STRUCTURE_TYPES.putAll(types);
                     StructureSearchScreen.STRUCTURE_TO_TYPE_MAP.clear();
                     StructureSearchScreen.STRUCTURE_TO_TYPE_MAP.putAll(structureToTypeMap);
+                    StructureSearchScreen.markDataChanged();
                 }))
                 .add();
 

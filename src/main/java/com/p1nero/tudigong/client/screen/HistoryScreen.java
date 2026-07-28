@@ -2,20 +2,27 @@ package com.p1nero.tudigong.client.screen;
 
 import com.p1nero.tudigong.client.util.SearchHistoryManager;
 import com.p1nero.tudigong.client.widget.HistoryList;
+import com.p1nero.tudigong.client.widget.TudiGongButton;
+import com.p1nero.tudigong.client.widget.TudiGongEditBox;
+import com.p1nero.tudigong.client.widget.TudiGongUiTheme;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class HistoryScreen extends Screen {
-
     private HistoryList historyList;
     private final Screen parentScreen;
     private EditBox searchBox;
+    private float animationProgress;
+    private int panelLeft;
+    private int panelTop;
+    private int panelRight;
+    private int panelBottom;
 
     public HistoryScreen(Screen parentScreen) {
         super(Component.translatable("gui.tudigong.history.title"));
@@ -25,51 +32,55 @@ public class HistoryScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        String previousQuery = this.searchBox == null ? "" : this.searchBox.getValue();
+        int panelWidth = Math.min(480, this.width - 20);
+        this.panelLeft = (this.width - panelWidth) / 2;
+        this.panelRight = this.panelLeft + panelWidth;
+        this.panelTop = 10;
+        this.panelBottom = this.height - 10;
+        int contentLeft = this.panelLeft + 12;
+        int contentWidth = panelWidth - 24;
+        int fieldTop = this.panelTop + 31;
+        int listTop = fieldTop + 27;
+        int listBottom = this.panelBottom - 36;
 
-        int listWidth = 320;
-        int listLeft = (this.width - listWidth) / 2;
-        int topMargin = 32;
-        int bottomMargin = 32;
-
-        this.searchBox = new EditBox(this.font, listLeft, topMargin, listWidth, 20, Component.translatable("gui.tudigong.history.search_placeholder"));
+        this.searchBox = new TudiGongEditBox(this.font, contentLeft, fieldTop, contentWidth, 21,
+                Component.translatable("gui.tudigong.history.search_placeholder"));
+        this.searchBox.setValue(previousQuery);
         this.addRenderableWidget(this.searchBox);
 
-        int listY = topMargin + 24;
-        this.historyList = new HistoryList(this.minecraft, listWidth, this.height, listY, this.height - bottomMargin);
-        this.historyList.setLeftPos(listLeft);
+        this.historyList = new HistoryList(this.minecraft, contentWidth, this.height, listTop, listBottom);
+        this.historyList.setLeftPos(contentLeft);
         this.addRenderableWidget(this.historyList);
-
         this.searchBox.setResponder(this.historyList::filter);
-        this.historyList.filter(null);
+        this.historyList.filter(previousQuery);
 
-        int buttonWidth = 100;
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.tudigong.history.clear"), (button) -> {
+        int buttonWidth = 96;
+        this.addRenderableWidget(new TudiGongButton(contentLeft, this.panelBottom - 28, buttonWidth, 20,
+                Component.translatable("gui.tudigong.history.clear"), button -> {
             SearchHistoryManager.clearHistory();
             this.searchBox.setValue("");
-            this.historyList.filter(null);
-        }).bounds((this.width / 2) - buttonWidth - 5, this.height - 28, buttonWidth, 20).build());
-
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), (button) -> this.onClose())
-                .bounds((this.width / 2) + 5, this.height - 28, buttonWidth, 20).build());
-
-
+            this.historyList.filter("");
+        }));
+        this.addRenderableWidget(new TudiGongButton(this.panelRight - 12 - buttonWidth, this.panelBottom - 28,
+                buttonWidth, 20, Component.translatable("gui.done"), button -> this.onClose()));
         this.setInitialFocus(this.searchBox);
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderDirtBackground(guiGraphics);
-        this.historyList.render(guiGraphics, mouseX, mouseY, partialTicks);
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 15, 0xFFFFFF);
-        super.render(guiGraphics, mouseX, mouseY, partialTicks);
+    public void tick() {
+        super.tick();
+        this.animationProgress = Math.min(1.0F, this.animationProgress + 0.1F);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (this.searchBox.isFocused() && this.searchBox.keyPressed(keyCode, scanCode, modifiers)) {
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        float progress = Mth.clamp(this.animationProgress + partialTick * 0.1F, 0.0F, 1.0F);
+        TudiGongUiTheme.renderBackdrop(graphics, this.width, this.height, this.panelLeft, this.panelTop, this.panelRight, this.panelBottom, progress);
+        graphics.drawCenteredString(this.font, this.title, this.width / 2, this.panelTop + 15, TudiGongUiTheme.INK);
+        graphics.drawCenteredString(this.font, Component.translatable("gui.tudigong.search.result_count", this.historyList.getResultCount()),
+                this.width / 2, this.panelBottom - 23, 0xFFB7A278);
+        super.render(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override

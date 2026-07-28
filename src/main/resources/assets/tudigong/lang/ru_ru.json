@@ -74,5 +74,20 @@
   "command.tudigong.help.tag_add": "/tudigong tag add <tagName> <structure> - Добавляет структуру к тегу.",
   "command.tudigong.help.tag_remove": "/tudigong tag remove <tagName> <structure> - Удаляет структуру из тега.",
   "command.tudigong.help.tag_list": "/tudigong tag list <tagName> - Перечисляет структуры в теге.",
-  "command.tudigong.help.tag_list_all": "/tudigong tag list_all - Перечисляет все определенные теги."
+  "command.tudigong.help.tag_list_all": "/tudigong tag list_all - Перечисляет все определенные теги.",
+  "error.tudigong.teleport_permission": "Для телепортации к результату поиска требуется уровень прав 2.",
+  "gui.tudigong.search.placeholder": "Поиск по имени, #тегу, @моду или $набору...",
+  "gui.tudigong.search.structure_title": "Поиск структур",
+  "gui.tudigong.search.biome_title": "Поиск биомов",
+  "gui.tudigong.search.result_count": "Результатов: %s",
+  "gui.tudigong.search.type": "Тип: %s",
+  "gui.tudigong.search.dimensions": "Измерения: %s",
+  "gui.tudigong.history.pos_na": "Нет координат",
+  "gui.tudigong.history.teleport": "ТП",
+  "history.tudigong.type.structure": "[Структура]",
+  "history.tudigong.type.biome": "[Биом]",
+  "gui.tudigong.history.title": "История поиска",
+  "gui.tudigong.history.button": "История",
+  "gui.tudigong.history.clear": "Очистить",
+  "gui.tudigong.history.search_placeholder": "Фильтр истории..."
 }

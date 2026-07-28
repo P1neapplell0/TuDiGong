@@ -1,71 +1,86 @@
 package com.p1nero.tudigong.client.widget;
 
+import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.client.util.SearchHistoryManager;
 import com.p1nero.tudigong.client.util.SearchHistoryManager.SearchHistoryEntry;
 import com.p1nero.tudigong.compat.JECharactersIntegration;
-import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.server.TeleportToServerPacket;
 import com.p1nero.tudigong.util.TextUtil;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ObjectSelectionList;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringUtil;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
-
-    private static final ResourceLocation HISTORY_ENTRY_TEXTURE = ResourceLocation.fromNamespaceAndPath("tudigong", "textures/gui/history_entry.png");
+    private String currentFilter = "";
+    private int resultCount;
 
     public HistoryList(Minecraft minecraft, int width, int height, int y0, int y1) {
-        super(minecraft, width, height, y0, y1, 40);
-        this.setRenderBackground(true);
+        super(minecraft, width, height, y0, y1, 48);
+        this.setRenderBackground(false);
+        this.setRenderTopAndBottom(false);
+        this.setRenderSelection(false);
     }
 
     public void filter(String keyword) {
+        this.currentFilter = keyword == null ? "" : keyword;
         this.clearEntries();
         Stream<SearchHistoryEntry> stream = SearchHistoryManager.getHistory().stream();
-
-        if (!StringUtil.isNullOrEmpty(keyword)) {
-            String lowerCaseKeyword = keyword.toLowerCase();
-            stream = stream.filter(entry -> {
-                String translatedName = TextUtil.tryToGetName(entry.searchTerm());
-                if (JECharactersIntegration.match(translatedName, lowerCaseKeyword)) return true;
-                if (JECharactersIntegration.match(entry.searchTerm(), lowerCaseKeyword)) return true;
-                if (JECharactersIntegration.match(entry.type().getString(), lowerCaseKeyword)) return true;
-                if (entry.position() != null) {
-                    String posString = entry.position().getX() + ", " + entry.position().getY() + ", " + entry.position().getZ();
-                    if (posString.contains(lowerCaseKeyword)) return true;
-                }
-                if (entry.dimension() != null) {
-                    if (entry.dimension().location().toString().toLowerCase().contains(lowerCaseKeyword)) return true;
-                }
-                String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(entry.timestamp()));
-                return timestamp.contains(lowerCaseKeyword);
-            });
+        if (!StringUtil.isNullOrEmpty(this.currentFilter)) {
+            String normalized = this.currentFilter.toLowerCase(Locale.ROOT);
+            stream = stream.filter(entry -> matches(entry, normalized));
         }
-
         stream.forEach(entry -> this.addEntry(new Entry(this, entry)));
+        this.resultCount = this.children().size();
         this.setScrollAmount(0);
+    }
+
+    private boolean matches(SearchHistoryEntry entry, String keyword) {
+        String translatedName = TextUtil.tryToGetName(entry.searchTerm());
+        if (JECharactersIntegration.match(translatedName, keyword)
+                || JECharactersIntegration.match(entry.searchTerm(), keyword)
+                || JECharactersIntegration.match(entry.type().getString(), keyword)) {
+            return true;
+        }
+        if (entry.position() != null) {
+            String position = entry.position().getX() + ", " + entry.position().getY() + ", " + entry.position().getZ();
+            if (position.contains(keyword)) {
+                return true;
+            }
+        }
+        if (entry.dimension() != null && entry.dimension().location().toString().toLowerCase(Locale.ROOT).contains(keyword)) {
+            return true;
+        }
+        String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(entry.timestamp()));
+        return timestamp.contains(keyword);
+    }
+
+    public int getResultCount() {
+        return this.resultCount;
+    }
+
+    @Override
+    protected void renderBackground(@NotNull GuiGraphics graphics) {
+        graphics.fill(this.x0, this.y0, this.x1, this.y1, 0xC812100F);
+        TudiGongUiTheme.drawBorder(graphics, this.x0, this.y0, this.x1, this.y1, TudiGongUiTheme.GOLD_MUTED);
     }
 
     @Override
     public int getRowWidth() {
-        return this.width;
+        return this.width - 10;
     }
 
     @Override
@@ -73,11 +88,27 @@ public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
         return this.x1 - 6;
     }
 
+    @Override
+    protected void renderDecorations(GuiGraphics graphics, int mouseX, int mouseY) {
+        int maxScroll = this.getMaxScroll();
+        if (maxScroll <= 0) {
+            return;
+        }
+        int scrollbarX = this.getScrollbarPosition();
+        int viewportHeight = this.y1 - this.y0;
+        int thumbHeight = Mth.clamp((int) ((float) (viewportHeight * viewportHeight) / this.getMaxPosition()),
+                24, viewportHeight - 8);
+        int thumbTop = (int) this.getScrollAmount() * (viewportHeight - thumbHeight) / maxScroll + this.y0;
+        graphics.fill(scrollbarX, this.y0, scrollbarX + 6, this.y1, 0xFF171310);
+        graphics.fill(scrollbarX + 1, thumbTop, scrollbarX + 5, thumbTop + thumbHeight, TudiGongUiTheme.GOLD_MUTED);
+        graphics.fill(scrollbarX + 2, thumbTop + 1, scrollbarX + 4, thumbTop + thumbHeight - 1, TudiGongUiTheme.GOLD);
+    }
+
     public static class Entry extends ObjectSelectionList.Entry<HistoryList.Entry> {
         private final HistoryList parentList;
         private final SearchHistoryEntry historyEntry;
-        private final Button deleteButton;
-        private final Button teleportButton;
+        private final TudiGongButton deleteButton;
+        private final TudiGongButton teleportButton;
         private final Minecraft minecraft;
         private final ItemStack icon;
 
@@ -85,91 +116,80 @@ public class HistoryList extends ObjectSelectionList<HistoryList.Entry> {
             this.parentList = parentList;
             this.historyEntry = historyEntry;
             this.minecraft = Minecraft.getInstance();
-
-            this.deleteButton = Button.builder(Component.literal("X").withStyle(ChatFormatting.RED), (button) -> {
+            this.deleteButton = new TudiGongButton(0, 0, 22, 20, Component.literal("x"), button -> {
                 SearchHistoryManager.remove(historyEntry);
-                this.parentList.filter(null); // Refresh the list
-            }).bounds(0, 0, 20, 20).build();
-
-            this.teleportButton = Button.builder(Component.translatable("gui.tudigong.history.teleport"), (button) -> {
+                this.parentList.filter(this.parentList.currentFilter);
+            });
+            this.teleportButton = new TudiGongButton(0, 0, 42, 20,
+                    Component.translatable("gui.tudigong.history.teleport"), button -> {
                 if (historyEntry.position() != null && historyEntry.dimension() != null) {
-                    DialoguePacketRelay.sendToServer(TDGPacketHandler.INSTANCE, new TeleportToServerPacket(historyEntry.position(), historyEntry.dimension()));
+                    DialoguePacketRelay.sendToServer(TDGPacketHandler.INSTANCE,
+                            new TeleportToServerPacket(historyEntry.position(), historyEntry.dimension()));
                 }
-            }).bounds(0, 0, 30, 20).build();
-            this.teleportButton.visible = historyEntry.position() != null;
-
-            boolean isStructure = historyEntry.type().getString().equalsIgnoreCase(Component.translatable("history.tudigong.type.structure").getString());
+            });
+            this.teleportButton.visible = historyEntry.position() != null && historyEntry.dimension() != null;
+            boolean canTeleport = this.minecraft.player != null && this.minecraft.player.hasPermissions(2);
+            this.teleportButton.active = canTeleport;
+            if (!canTeleport) {
+                this.teleportButton.setTooltip(Tooltip.create(Component.translatable("error.tudigong.teleport_permission")));
+            }
+            boolean isStructure = historyEntry.type().getString().equalsIgnoreCase(
+                    Component.translatable("history.tudigong.type.structure").getString());
             this.icon = new ItemStack(isStructure ? Items.COMPASS : Items.GRASS_BLOCK);
         }
 
         @Override
-        public void render(GuiGraphics guiGraphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean isMouseOver, float partialTicks) {
-            // Render entry background
-//            guiGraphics.blit(HISTORY_ENTRY_TEXTURE, left, top, 0, isMouseOver ? height : 0, width, height, width, height * 2);
-
-            // Render Icon
-            guiGraphics.renderFakeItem(this.icon, left + 8, top + 12);
-
-            // Render Search Term
-            String translatedName = TextUtil.tryToGetName(historyEntry.searchTerm());
-            Component mainText = Component.literal(translatedName).withStyle(ChatFormatting.WHITE);
-            guiGraphics.drawString(minecraft.font, mainText, left + 35, top + 7, 0xFFFFFF, true);
-
-            // Render Position
-            if (historyEntry.position() != null) {
-                BlockPos pos = historyEntry.position();
-                String yString = pos.getY() == -1145 ? "~" : String.valueOf(pos.getY());
-                String posString = pos.getX() + ", " + yString + ", " + pos.getZ();
-                String dimensionName = "";
-                String tpY = pos.getY() == -1145 ? "~" : String.valueOf(pos.getY());
-                String tpCommand = "/tp @s " + pos.getX() + " " + tpY + " " + pos.getZ();
-                if (historyEntry.dimension() != null) {
-                    dimensionName = " (" + historyEntry.dimension().location().getPath() + ")";
-                    tpCommand = "/execute as @s in " + historyEntry.dimension().location() + " run " + tpCommand;
-                }
-
-                String finalTpCommand = tpCommand;
-                MutableComponent posComponent = Component.literal(posString + dimensionName)
-                        .withStyle(style -> style.withColor(ChatFormatting.GREEN)
-                                .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, finalTpCommand))
-                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("chat.coordinates.tooltip"))));
-                guiGraphics.drawString(minecraft.font, posComponent, left + 35, top + 20, 0xFFFFFF);
-            } else {
-                guiGraphics.drawString(minecraft.font, Component.translatable("gui.tudigong.history.pos_na").withStyle(ChatFormatting.DARK_GRAY), left + 35, top + 20, 0xFFFFFF);
+        public void render(GuiGraphics graphics, int index, int top, int left, int width, int height,
+                           int mouseX, int mouseY, boolean isMouseOver, float partialTicks) {
+            int background = isMouseOver ? 0xB43A2A21 : (index & 1) == 0 ? 0x781D1916 : 0x70241E19;
+            graphics.fill(left, top, left + width, top + height, background);
+            if (isMouseOver) {
+                graphics.fill(left, top, left + 2, top + height, TudiGongUiTheme.GOLD_MUTED);
             }
+            graphics.renderFakeItem(this.icon, left + 8, top + 15);
 
-            // Render Timestamp
-            String timestamp = new SimpleDateFormat("yy/MM/dd HH:mm").format(new Date(historyEntry.timestamp()));
-            int timestampWidth = this.minecraft.font.width(timestamp);
-            int rightPadding = this.teleportButton.visible ? 65 : 30;
-            guiGraphics.drawString(this.minecraft.font, timestamp, left + width - timestampWidth - rightPadding, top + 7, 0xAAAAAA);
+            int buttonsWidth = this.teleportButton.visible ? 74 : 28;
+            int availableTextWidth = Math.max(30, width - 42 - buttonsWidth);
+            String translatedName = TextUtil.tryToGetName(this.historyEntry.searchTerm());
+            translatedName = this.minecraft.font.plainSubstrByWidth(translatedName, availableTextWidth);
+            graphics.drawString(this.minecraft.font, translatedName, left + 34, top + 7, TudiGongUiTheme.INK, false);
 
-            // Render Buttons
+            String position = Component.translatable("gui.tudigong.history.pos_na").getString();
+            if (this.historyEntry.position() != null) {
+                BlockPos pos = this.historyEntry.position();
+                String y = pos.getY() == -1145 ? "~" : String.valueOf(pos.getY());
+                position = pos.getX() + ", " + y + ", " + pos.getZ();
+                if (this.historyEntry.dimension() != null) {
+                    position += " (" + this.historyEntry.dimension().location().getPath() + ")";
+                }
+            }
+            position = this.minecraft.font.plainSubstrByWidth(position, availableTextWidth);
+            graphics.drawString(this.minecraft.font, position, left + 34, top + 20, 0xFF8FC28A, false);
+
+            String timestamp = new SimpleDateFormat("yy/MM/dd HH:mm").format(new Date(this.historyEntry.timestamp()));
+            graphics.drawString(this.minecraft.font, timestamp, left + 34, top + 33, 0xFF8D857B, false);
+
             this.deleteButton.setX(left + width - this.deleteButton.getWidth() - 5);
             this.deleteButton.setY(top + (height - this.deleteButton.getHeight()) / 2);
-            this.deleteButton.render(guiGraphics, mouseX, mouseY, partialTicks);
-
+            this.deleteButton.render(graphics, mouseX, mouseY, partialTicks);
             if (this.teleportButton.visible) {
                 this.teleportButton.setX(this.deleteButton.getX() - this.teleportButton.getWidth() - 5);
                 this.teleportButton.setY(top + (height - this.teleportButton.getHeight()) / 2);
-                this.teleportButton.render(guiGraphics, mouseX, mouseY, partialTicks);
+                this.teleportButton.render(graphics, mouseX, mouseY, partialTicks);
             }
         }
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (this.teleportButton.mouseClicked(mouseX, mouseY, button)) {
+            if (this.teleportButton.visible && this.teleportButton.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
-            if (this.deleteButton.mouseClicked(mouseX, mouseY, button)) {
-                return true;
-            }
-            return super.mouseClicked(mouseX, mouseY, button);
+            return this.deleteButton.mouseClicked(mouseX, mouseY, button) || super.mouseClicked(mouseX, mouseY, button);
         }
 
         @Override
         public @NotNull Component getNarration() {
-            return Component.literal(historyEntry.searchTerm());
+            return Component.literal(this.historyEntry.searchTerm());
         }
     }
 }

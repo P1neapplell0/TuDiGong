@@ -4,6 +4,7 @@ import com.p1nero.dialog_lib.network.packet.BasePacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -28,6 +29,10 @@ public record TeleportToServerPacket(BlockPos position, ResourceKey<Level> dimen
     @Override
     public void execute(@Nullable Player player) {
         if (player instanceof ServerPlayer serverPlayer) {
+            if (!serverPlayer.hasPermissions(2)) {
+                serverPlayer.sendSystemMessage(Component.translatable("error.tudigong.teleport_permission"));
+                return;
+            }
             ServerLevel targetLevel = serverPlayer.server.getLevel(this.dimension);
             if (targetLevel != null) {
                 double y = this.position.getY();

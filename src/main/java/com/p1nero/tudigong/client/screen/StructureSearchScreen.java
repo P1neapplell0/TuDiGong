@@ -1,121 +1,155 @@
 package com.p1nero.tudigong.client.screen;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.p1nero.dialog_lib.network.DialoguePacketRelay;
 import com.p1nero.dialog_lib.network.packet.serverbound.HandleNpcEntityPlayerInteractPacket;
-import com.p1nero.tudigong.client.screen.HistoryScreen;
 import com.p1nero.tudigong.client.widget.ResourceList;
+import com.p1nero.tudigong.client.widget.TudiGongButton;
+import com.p1nero.tudigong.client.widget.TudiGongEditBox;
+import com.p1nero.tudigong.client.widget.TudiGongUiTheme;
 import com.p1nero.tudigong.network.TDGPacketHandler;
 import com.p1nero.tudigong.network.packet.server.HandleSearchPacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 @OnlyIn(Dist.CLIENT)
 public class StructureSearchScreen extends Screen {
-    private int tudigongId;
+    public static final Map<ResourceLocation, String> STRUCTURE_NAME_MAP = new LinkedHashMap<>();
+    public static final Map<String, Set<ResourceLocation>> STRUCTURE_TAGS = new LinkedHashMap<>();
+    public static final Map<String, Set<ResourceLocation>> STRUCTURE_MOD_IDS = new LinkedHashMap<>();
+    public static final Map<String, Set<ResourceLocation>> STRUCTURE_SETS = new LinkedHashMap<>();
+    public static final Map<String, Set<ResourceLocation>> STRUCTURE_TYPES = new LinkedHashMap<>();
+    public static final Map<ResourceLocation, ResourceLocation> STRUCTURE_TO_TYPE_MAP = new LinkedHashMap<>();
+    public static final Map<ResourceLocation, List<ResourceLocation>> STRUCTURE_DIMENSIONS = new LinkedHashMap<>();
+    private static long dataVersion;
+
+    private final int tudigongId;
     private EditBox searchBox;
     private ResourceList resourceList;
-    private Button searchButton;
+    private TudiGongButton searchButton;
     private boolean found;
-    public static final BiMap<ResourceLocation, String> STRUCTURE_NAME_MAP = HashBiMap.create();
-    public static final Map<String, Set<ResourceLocation>> STRUCTURE_TAGS = new HashMap<>();
-    public static final Map<String, Set<ResourceLocation>> STRUCTURE_MOD_IDS = new HashMap<>();
-    public static final Map<String, Set<ResourceLocation>> STRUCTURE_SETS = new HashMap<>();
-    public static final Map<String, Set<ResourceLocation>> STRUCTURE_TYPES = new HashMap<>();
-    public static final Map<ResourceLocation, ResourceLocation> STRUCTURE_TO_TYPE_MAP = new HashMap<>();
-    public static final Map<ResourceLocation, List<ResourceLocation>> STRUCTURE_DIMENSIONS = new HashMap<>();
+    private long observedDataVersion = -1;
+    private int resultCount;
+    private float animationProgress;
+    private int panelLeft;
+    private int panelTop;
+    private int panelRight;
+    private int panelBottom;
 
     public StructureSearchScreen(int tudigongId) {
-        super(Component.literal(""));
+        super(Component.translatable("gui.tudigong.search.structure_title"));
         this.tudigongId = tudigongId;
+    }
+
+    public static void markDataChanged() {
+        dataVersion++;
     }
 
     @Override
     protected void init() {
         super.init();
+        String previousQuery = this.searchBox == null ? "" : this.searchBox.getValue();
+        int panelWidth = Math.min(410, this.width - 24);
+        this.panelLeft = (this.width - panelWidth) / 2;
+        this.panelRight = this.panelLeft + panelWidth;
+        this.panelTop = 12;
+        this.panelBottom = this.height - 12;
 
-        int inputBoxWidth = 200;
-        int buttonWidth = 80;
-        int totalWidth = inputBoxWidth + buttonWidth + 5;
-        int leftPos = (this.width - totalWidth) / 2;
-        int topPos = 50;
+        int contentLeft = this.panelLeft + 12;
+        int contentWidth = panelWidth - 24;
+        int buttonWidth = 82;
+        int fieldTop = this.panelTop + 31;
+        int listTop = fieldTop + 27;
+        int listBottom = this.panelBottom - 34;
 
-        this.searchBox = new EditBox(this.font, leftPos, topPos + 11, inputBoxWidth, 20, Component.translatable("gui.tudigong.search.placeholder"));
+        this.searchBox = new TudiGongEditBox(this.font, contentLeft, fieldTop, contentWidth - buttonWidth - 6, 21,
+                Component.translatable("gui.tudigong.search.placeholder"));
         this.searchBox.setMaxLength(32500);
-        this.searchBox.setValue("");
+        this.searchBox.setValue(previousQuery);
         this.addRenderableWidget(this.searchBox);
 
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.tudigong.history.button"),
-                button -> this.minecraft.setScreen(new HistoryScreen(this)))
-                .bounds(leftPos + inputBoxWidth + 5, topPos, buttonWidth, 20).build());
-
-        this.searchButton = Button.builder(Component.translatable("button.tudigong.ask"), this::onSearchButtonPressed)
-                .bounds(leftPos + inputBoxWidth + 5, topPos + 22, buttonWidth, 20)
-                .build();
+        this.searchButton = new TudiGongButton(contentLeft + contentWidth - buttonWidth, fieldTop, buttonWidth, 21,
+                Component.translatable("button.tudigong.ask"), this::onSearchButtonPressed);
         this.addRenderableWidget(this.searchButton);
+        this.addRenderableWidget(new TudiGongButton(contentLeft, this.panelBottom - 27, 86, 19,
+                Component.translatable("gui.tudigong.history.button"),
+                button -> this.minecraft.setScreen(new HistoryScreen(this))));
 
-        int listY = topPos + 44 + 2;
-        this.resourceList = new ResourceList(Minecraft.getInstance(), inputBoxWidth, this.height, listY, this.height - 30, 31, STRUCTURE_NAME_MAP, searchBox, STRUCTURE_TAGS, STRUCTURE_MOD_IDS, STRUCTURE_SETS, STRUCTURE_DIMENSIONS, STRUCTURE_TYPES, STRUCTURE_TO_TYPE_MAP);
-        this.resourceList.setRenderTopAndBottom(false);
-        this.resourceList.setLeftPos(leftPos);
+        this.resourceList = new ResourceList(Minecraft.getInstance(), contentWidth, this.height, listTop, listBottom, 43,
+                STRUCTURE_NAME_MAP, this.searchBox, STRUCTURE_TAGS, STRUCTURE_MOD_IDS, STRUCTURE_SETS,
+                STRUCTURE_DIMENSIONS, STRUCTURE_TYPES, STRUCTURE_TO_TYPE_MAP, count -> this.resultCount = count);
+        this.resourceList.setLeftPos(contentLeft);
         this.addRenderableWidget(this.resourceList);
-
         this.searchBox.setResponder(this.resourceList::refresh);
-        this.resourceList.refresh(null);
-
+        this.resourceList.refresh(previousQuery, false);
+        this.observedDataVersion = dataVersion;
         this.setInitialFocus(this.searchBox);
     }
 
-    private void onSearchButtonPressed(Button button) {
-        button.playDownSound(Minecraft.getInstance().getSoundManager());
-        String searchString = this.searchBox.getValue().trim();
+    @Override
+    public void tick() {
+        super.tick();
+        this.animationProgress = Math.min(1.0F, this.animationProgress + 0.1F);
+        if (this.observedDataVersion != dataVersion && this.resourceList != null) {
+            this.observedDataVersion = dataVersion;
+            this.resourceList.refresh(this.searchBox.getValue(), true);
+        }
+    }
 
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        float progress = Mth.clamp(this.animationProgress + partialTick * 0.1F, 0.0F, 1.0F);
+        TudiGongUiTheme.renderBackdrop(graphics, this.width, this.height, this.panelLeft, this.panelTop, this.panelRight, this.panelBottom, progress);
+        graphics.drawCenteredString(this.font, this.title, this.width / 2, this.panelTop + 15, TudiGongUiTheme.INK);
+        graphics.drawCenteredString(this.font, Component.translatable("gui.tudigong.search.result_count", this.resultCount),
+                this.width / 2, this.panelBottom - 23, 0xFFB7A278);
+        super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private void onSearchButtonPressed(net.minecraft.client.gui.components.Button button) {
+        String searchString = this.searchBox.getValue().trim();
         if (searchString.isEmpty()) {
             return;
         }
-
-        String searchToSend;
-        // If the input is a display name, convert it to a ResourceLocation string
-        if (STRUCTURE_NAME_MAP.containsValue(searchString)) {
-            searchToSend = STRUCTURE_NAME_MAP.inverse().get(searchString).toString();
-        } else {
-            // Otherwise, send the raw string (could be a #tag or a direct resource location)
-            searchToSend = searchString;
-        }
-
-        DialoguePacketRelay.sendToServer(TDGPacketHandler.INSTANCE, new HandleSearchPacket(tudigongId, searchToSend, true));
-        found = true;
+        ResourceLocation selected = this.resourceList.getSelectedResourceIdForCurrentInput();
+        String searchToSend = selected == null ? searchString : selected.toString();
+        DialoguePacketRelay.sendToServer(TDGPacketHandler.INSTANCE, new HandleSearchPacket(this.tudigongId, searchToSend, true));
+        this.found = true;
         this.onClose();
     }
 
     @Override
     public void onClose() {
         super.onClose();
-        if (!found) {
-            DialoguePacketRelay.sendToServer(new HandleNpcEntityPlayerInteractPacket(tudigongId, 0));
+        if (!this.found) {
+            DialoguePacketRelay.sendToServer(new HandleNpcEntityPlayerInteractPacket(this.tudigongId, 0));
         }
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_PAGE_UP || keyCode == GLFW.GLFW_KEY_PAGE_DOWN) {
+            this.resourceList.page(keyCode == GLFW.GLFW_KEY_PAGE_UP ? -1 : 1);
+            return true;
+        }
         if (this.searchBox.isFocused()) {
             if (keyCode == GLFW.GLFW_KEY_TAB) {
                 this.resourceList.handleTabCompletion();
                 return true;
-            } else if (keyCode == GLFW.GLFW_KEY_ENTER) {
+            }
+            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
                 this.onSearchButtonPressed(this.searchButton);
                 return true;
             }
@@ -124,7 +158,7 @@ public class StructureSearchScreen extends Screen {
     }
 
     public int getTudigongId() {
-        return tudigongId;
+        return this.tudigongId;
     }
 
     @Override

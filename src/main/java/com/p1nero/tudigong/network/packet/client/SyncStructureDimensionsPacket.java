@@ -24,5 +24,6 @@ public record SyncStructureDimensionsPacket(Map<ResourceLocation, List<ResourceL
     public void execute(@Nullable Player playerEntity) {
         StructureSearchScreen.STRUCTURE_DIMENSIONS.clear();
         StructureSearchScreen.STRUCTURE_DIMENSIONS.putAll(dimensions);
+        StructureSearchScreen.markDataChanged();
     }
 }

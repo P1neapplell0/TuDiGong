@@ -26,5 +26,6 @@ public record SyncStructureSetsPacket(Map<String, Set<ResourceLocation>> sets) i
     public void execute(@Nullable Player playerEntity) {
         StructureSearchScreen.STRUCTURE_SETS.clear();
         StructureSearchScreen.STRUCTURE_SETS.putAll(sets);
+        StructureSearchScreen.markDataChanged();
     }
 }

@@ -27,5 +27,6 @@ public record SyncStructureTagsPacket(Map<String, Set<ResourceLocation>> tags) i
     public void execute(@Nullable Player playerEntity) {
         StructureSearchScreen.STRUCTURE_TAGS.clear();
         StructureSearchScreen.STRUCTURE_TAGS.putAll(tags);
+        StructureSearchScreen.markDataChanged();
     }
 }
