@@ -152,6 +152,9 @@ public class TudiGongEntity extends PathfinderMob {
     @Override
     public void tick() {
         super.tick();
+        if(this.conversingPlayer != null) {
+            this.getLookControl().setLookAt(this.conversingPlayer);
+        }
         if (level().isClientSide) {
             if(!this.canInteract()) {
                 // 生成往上乱飞的烟雾粒子

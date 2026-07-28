@@ -24,8 +24,8 @@ import java.util.List;
 public final class TudiGongDialogueScreen extends Screen {
     private static final String PREFIX = "entity.tudigong.tudigong.tudigong.";
     private static final int DIALOG_WIDTH = 300;
-    private static final int TYPEWRITER_SPEED = 2;
-    private static final int TYPEWRITER_INTERVAL = 2;
+    private static final int TYPEWRITER_SPEED = 1;
+    private static final int TYPEWRITER_INTERVAL = 1;
     private static final boolean OPTION_IN_CENTER = false;
     private static final boolean ENABLE_BACKGROUND = false;
     private static final boolean ENABLE_ANSWER_BACKGROUND = true;
@@ -53,7 +53,7 @@ public final class TudiGongDialogueScreen extends Screen {
     @Override
     protected void init() {
         this.options.clear();
-        this.answerText = "[" + Component.translatable("entity.tudigong.tudigong").getString() + "] "
+        this.answerText = "[" + Component.translatable("entity.tudigong.tudigong").getString() + "]:\n"
                 + Component.translatable(PREFIX + (this.fromHurt ? "answer0" : "answer1")).getString();
         this.visibleCharacters = 0;
         this.typewriterTimer = 0;
@@ -155,6 +155,10 @@ public final class TudiGongDialogueScreen extends Screen {
                 graphics.fill(0, currentY, this.width, currentY + 1, alpha << 24);
             }
         }
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics p_283688_, int p_296369_, int p_296477_, float p_294317_) {
     }
 
     private void openSearch(boolean structure) {

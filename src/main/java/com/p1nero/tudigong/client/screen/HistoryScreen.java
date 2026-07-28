@@ -92,4 +92,9 @@ public class HistoryScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
+
+    @Override
+    protected void renderBlurredBackground(float p_330683_) {
+
+    }
 }
